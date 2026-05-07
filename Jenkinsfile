@@ -128,7 +128,7 @@ pipeline {
 
                 script {
 
-                    def cmd = "pytest tests/ -v --junitxml=reports/results.xml --alluredir=reports/allure-results -n ${params.PARALLEL_WORKERS} --reruns=2 --reruns-delay=2"
+                    def cmd = "pytest tests/ -v -s --junitxml=reports/results.xml --alluredir=reports/allure-results -n 4 --reruns=2 --reruns-delay=2"
 
                     runTests(cmd)
                 }

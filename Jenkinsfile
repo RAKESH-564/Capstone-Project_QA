@@ -4,9 +4,11 @@
 // ============================================
 
 pipeline {
+
     agent any
 
     parameters {
+
         choice(
             name: 'BROWSER',
             choices: ['chrome', 'firefox', 'edge'],
@@ -22,17 +24,18 @@ pipeline {
         booleanParam(
             name: 'HEADLESS',
             defaultValue: true,
-            description: 'Run in headless mode'
+            description: 'Run browser in headless mode'
         )
 
         string(
             name: 'PARALLEL_WORKERS',
-            defaultValue: '4',
+            defaultValue: '2',
             description: 'Number of parallel workers'
         )
     }
 
     environment {
+
         TEST_ENV = "${params.ENV}"
         BROWSER = "${params.BROWSER}"
         HEADLESS = "${params.HEADLESS}"
@@ -46,6 +49,7 @@ pipeline {
         // ============================================
 
         stage('Checkout') {
+
             steps {
 
                 checkout([
@@ -56,7 +60,7 @@ pipeline {
                     ]]
                 ])
 
-                echo "Code checked out successfully from GitHub repository"
+                echo 'Code checked out successfully from GitHub repository'
             }
         }
 
@@ -65,6 +69,7 @@ pipeline {
         // ============================================
 
         stage('Setup Environment') {
+
             steps {
 
                 script {
@@ -96,6 +101,7 @@ pipeline {
         // ============================================
 
         stage('API Health Check') {
+
             steps {
 
                 script {
@@ -119,7 +125,7 @@ pipeline {
         }
 
         // ============================================
-        // Run Complete Test Suite
+        // Run Automation Tests
         // ============================================
 
         stage('Run Tests') {
@@ -128,7 +134,17 @@ pipeline {
 
                 script {
 
-                    def cmd = "pytest tests/ -v -s --junitxml=reports/results.xml --alluredir=reports/allure-results -n 4 --reruns=2 --reruns-delay=2"
+                    def cmd = """
+                    pytest tests/ -v -s \
+                    -n ${params.PARALLEL_WORKERS} \
+                    --dist=loadfile \
+                    --junitxml=reports/results.xml \
+                    --alluredir=reports/allure-results \
+                    --html=reports/report.html \
+                    --self-contained-html \
+                    --reruns=2 \
+                    --reruns-delay=2
+                    """
 
                     runTests(cmd)
                 }
@@ -136,18 +152,60 @@ pipeline {
         }
 
         // ============================================
-        // Generate Allure Report
+        // Generate Allure HTML Report
         // ============================================
 
         stage('Generate Allure Report') {
 
             steps {
 
-                allure(
-                    includeProperties: false,
-                    jdk: '',
-                    results: [[path: 'reports/allure-results']]
-                )
+                script {
+
+                    if (isUnix()) {
+
+                        sh '''
+                            allure generate reports/allure-results \
+                            -o reports/allure-report \
+                            --clean
+                        '''
+
+                    } else {
+
+                        bat '''
+                            allure generate reports\\allure-results ^
+                            -o reports\\allure-report ^
+                            --clean
+                        '''
+                    }
+                }
+            }
+        }
+
+        // ============================================
+        // Publish HTML Reports
+        // ============================================
+
+        stage('Publish Reports') {
+
+            steps {
+
+                publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'reports',
+                    reportFiles: 'report.html',
+                    reportName: 'Pytest HTML Report'
+                ])
+
+                publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'reports/allure-report',
+                    reportFiles: 'index.html',
+                    reportName: 'Allure HTML Report'
+                ])
             }
         }
     }
@@ -175,12 +233,12 @@ pipeline {
 
         success {
 
-            echo ' All tests PASSED!'
+            echo '✅ All tests PASSED!'
         }
 
         failure {
 
-            echo ' Some tests FAILED. Check Allure report for details.'
+            echo '❌ Some tests FAILED. Check reports for details.'
         }
 
         cleanup {

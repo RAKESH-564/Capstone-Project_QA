@@ -415,14 +415,26 @@ class BasePage:
         #             (By.XPATH, f"//*[contains(@data-testid, '{testid}')]")
         #         )
         elif by == By.CSS_SELECTOR:
-            if value and "data-testid" in value:
+
+            if value is None:
+                logger.warning("Locator value is None in self-healing")
+                return None
+
+            if isinstance(value, str) and "data-testid" in value:
+
                 try:
-                    testid = value.split("data-testid=")[1].strip("\"']")
-                    healing_strategies.append(
-                        (By.XPATH, f"//*[contains(@data-testid, '{testid}')]")
-                    )
+                    parts = value.split("data-testid=")
+
+                    if len(parts) > 1:
+
+                        testid = parts[1].strip("\"']")
+
+                        healing_strategies.append(
+                            (By.XPATH, f"//*[contains(@data-testid, '{testid}')]")
+                        )
+
                 except Exception as exc:
-                    logger.warning(f"Self-healing split failed: {exc}")
+                    logger.warning(f"Self-healing CSS parsing failed: {exc}")
         elif by == By.NAME:
             healing_strategies.append(
                 (By.XPATH, f"//*[contains(@name, '{value}')]")

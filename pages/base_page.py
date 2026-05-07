@@ -394,16 +394,7 @@ class BasePage:
         Returns:
             WebElement or None: The healed element if found.
         """
-        if not original_locator or len(original_locator) != 2:
-            logger.error(f"Invalid locator for self-healing: {original_locator}")
-            return None
-
         by, value = original_locator
-
-        if value is None:
-            logger.error(f"Cannot self-heal locator with None value: {original_locator}")
-            return None
-
         logger.warning(f"🔧 Self-healing: Attempting alternative locators for: {value}")
 
         # Strategy 1: Try by partial attribute match (XPath)
@@ -418,15 +409,12 @@ class BasePage:
             )
         elif by == By.CSS_SELECTOR:
             # Try extracting key parts of the selector
-            if isinstance(value, str) and "data-testid" in value:
-                parts = value.split("data-testid=")
-                if len(parts) > 1:
-                    testid = parts[1].strip("\"'] ")
-                    if testid:
-                        healing_strategies.append(
-                            (By.XPATH, f"//*[contains(@data-testid, '{testid}')]")
-                        )
-        elif by == By.NAME and isinstance(value, str):
+            if "data-testid" in value:
+                testid = value.split("data-testid=")[1].strip("\"']")
+                healing_strategies.append(
+                    (By.XPATH, f"//*[contains(@data-testid, '{testid}')]")
+                )
+        elif by == By.NAME:
             healing_strategies.append(
                 (By.XPATH, f"//*[contains(@name, '{value}')]")
             )

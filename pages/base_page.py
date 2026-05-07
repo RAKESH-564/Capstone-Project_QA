@@ -407,13 +407,22 @@ class BasePage:
             healing_strategies.append(
                 (By.CSS_SELECTOR, f"[id*='{value}']")
             )
+        # elif by == By.CSS_SELECTOR:
+        #     # Try extracting key parts of the selector
+        #     if "data-testid" in value:
+        #         testid = value.split("data-testid=")[1].strip("\"']")
+        #         healing_strategies.append(
+        #             (By.XPATH, f"//*[contains(@data-testid, '{testid}')]")
+        #         )
         elif by == By.CSS_SELECTOR:
-            # Try extracting key parts of the selector
-            if "data-testid" in value:
-                testid = value.split("data-testid=")[1].strip("\"']")
-                healing_strategies.append(
-                    (By.XPATH, f"//*[contains(@data-testid, '{testid}')]")
-                )
+            if value and "data-testid" in value:
+                try:
+                    testid = value.split("data-testid=")[1].strip("\"']")
+                    healing_strategies.append(
+                        (By.XPATH, f"//*[contains(@data-testid, '{testid}')]")
+                    )
+                except Exception as exc:
+                    logger.warning(f"Self-healing split failed: {exc}")
         elif by == By.NAME:
             healing_strategies.append(
                 (By.XPATH, f"//*[contains(@name, '{value}')]")

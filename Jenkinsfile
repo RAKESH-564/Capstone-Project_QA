@@ -4,11 +4,9 @@
 // ============================================
 
 pipeline {
-
     agent any
 
     parameters {
-
         choice(
             name: 'BROWSER',
             choices: ['chrome', 'firefox', 'edge'],
@@ -24,18 +22,17 @@ pipeline {
         booleanParam(
             name: 'HEADLESS',
             defaultValue: true,
-            description: 'Run browser in headless mode'
+            description: 'Run in headless mode'
         )
 
         string(
             name: 'PARALLEL_WORKERS',
-            defaultValue: '2',
+            defaultValue: '4',
             description: 'Number of parallel workers'
         )
     }
 
     environment {
-
         TEST_ENV = "${params.ENV}"
         BROWSER = "${params.BROWSER}"
         HEADLESS = "${params.HEADLESS}"
@@ -49,7 +46,6 @@ pipeline {
         // ============================================
 
         stage('Checkout') {
-
             steps {
 
                 checkout([
@@ -57,10 +53,12 @@ pipeline {
                     branches: [[name: '*/main']],
                     userRemoteConfigs: [[
                         url: 'https://github.com/RAKESH-564/Capstone-Project_QA.git'
+                        url: 'https://github.com/RAKESH-564/Capstone-Project_QA.git'
                     ]]
                 ])
 
-                echo 'Code checked out successfully from GitHub repository'
+                echo "Code checked out successfully from GitHub repository"
+                
             }
         }
 
@@ -69,7 +67,6 @@ pipeline {
         // ============================================
 
         stage('Setup Environment') {
-
             steps {
 
                 script {
@@ -101,7 +98,6 @@ pipeline {
         // ============================================
 
         stage('API Health Check') {
-
             steps {
 
                 script {
@@ -125,7 +121,7 @@ pipeline {
         }
 
         // ============================================
-        // Run Automation Tests
+        // Run Complete Test Suite
         // ============================================
 
         stage('Run Tests') {
@@ -135,14 +131,12 @@ pipeline {
                 script {
 
                     def cmd = """
-                    pytest tests/ -v -s \
-                    -n ${params.PARALLEL_WORKERS} \
-                    --dist=loadfile \
-                    --junitxml=reports/results.xml \
-                    --alluredir=reports/allure-results \
-                    --html=reports/report.html \
-                    --self-contained-html \
-                    --reruns=2 \
+                    pytest tests/ ^
+                    -v ^
+                    --junitxml=reports/results.xml ^
+                    --alluredir=reports/allure-results ^
+                    -n ${params.PARALLEL_WORKERS} ^
+                    --reruns=2 ^
                     --reruns-delay=2
                     """
 
@@ -152,60 +146,18 @@ pipeline {
         }
 
         // ============================================
-        // Generate Allure HTML Report
+        // Generate Allure Report
         // ============================================
 
         stage('Generate Allure Report') {
 
             steps {
 
-                script {
-
-                    if (isUnix()) {
-
-                        sh '''
-                            allure generate reports/allure-results \
-                            -o reports/allure-report \
-                            --clean
-                        '''
-
-                    } else {
-
-                        bat '''
-                            allure generate reports\\allure-results ^
-                            -o reports\\allure-report ^
-                            --clean
-                        '''
-                    }
-                }
-            }
-        }
-
-        // ============================================
-        // Publish HTML Reports
-        // ============================================
-
-        stage('Publish Reports') {
-
-            steps {
-
-                publishHTML([
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: 'reports',
-                    reportFiles: 'report.html',
-                    reportName: 'Pytest HTML Report'
-                ])
-
-                publishHTML([
-                    allowMissing: true,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: 'reports/allure-report',
-                    reportFiles: 'index.html',
-                    reportName: 'Allure HTML Report'
-                ])
+                allure(
+                    includeProperties: false,
+                    jdk: '',
+                    results: [[path: 'reports/allure-results']]
+                )
             }
         }
     }
@@ -233,12 +185,12 @@ pipeline {
 
         success {
 
-            echo '✅ All tests PASSED!'
+            echo ' All tests PASSED!'
         }
 
         failure {
 
-            echo '❌ Some tests FAILED. Check reports for details.'
+            echo ' Some tests FAILED. Check Allure report for details.'
         }
 
         cleanup {
